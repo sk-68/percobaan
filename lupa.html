@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reset Password</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: #b30000;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .container {
+      background: white;
+      padding: 25px 20px;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 380px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+      text-align: center;
+    }
+
+    h2 {
+      margin-bottom: 20px;
+      font-size: 22px;
+      color: #333;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+      text-align: left;
+    }
+
+    label {
+      font-size: 14px;
+      margin-bottom: 6px;
+      display: block;
+      color: #333;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #bbb;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      background-color: #007bff;
+      color: white;
+      font-size: 15px;
+      font-weight: bold;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-bottom: 10px;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    .scan-button {
+      background-color: #28a745;
+    }
+
+    .scan-button:hover {
+      background-color: #1e7e34;
+    }
+
+    .email-list {
+      margin-top: 10px;
+      text-align: left;
+      max-height: 220px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 10px;
+      background: #f9f9f9;
+    }
+
+    .email-item {
+      padding: 8px 10px;
+      margin-bottom: 6px;
+      border-radius: 4px;
+      background: #fff;
+      cursor: pointer;
+      border: 1px solid #ccc;
+      font-size: 14px;
+    }
+
+    .email-item:hover {
+      background-color: #e6f0ff;
+    }
+
+    .status {
+      margin-top: 12px;
+      font-size: 14px;
+      font-weight: bold;
+    }
+
+    .back-link {
+      margin-top: 16px;
+      font-size: 13px;
+      color: #555;
+      cursor: pointer;
+    }
+
+    .back-link:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Reset Password</h2>
+
+    <div class="form-group">
+      <label for="input-email">Email Anda</label>
+      <input type="email" id="input-email" placeholder="Masukkan email terdaftar" />
+    </div>
+
+    <button onclick="resetManual()">Reset Manual</button>
+    <button class="scan-button" onclick="scanEmail()">🔍 Scan Semua Email</button>
+
+    <div class="email-list" id="email-list"></div>
+
+    <div class="status" id="status-msg"></div>
+    <div class="back-link" onclick="window.location.href='index.html'">← Kembali ke Login</div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+
+  <!-- Config -->
+  <script src="js/firebase-config.js"></script>
+
+  <script>
+    async function resetManual() {
+      const email = document.getElementById("input-email").value.trim();
+      const statusMsg = document.getElementById("status-msg");
+      statusMsg.textContent = "";
+
+      if (!email) {
+        statusMsg.style.color = "red";
+        statusMsg.textContent = "Masukkan email terlebih dahulu.";
+        return;
+      }
+
+      try {
+        await auth.sendPasswordResetEmail(email);
+        statusMsg.style.color = "green";
+        statusMsg.textContent = "Email reset password telah dikirim ke: " + email;
+      } catch (err) {
+        console.error(err);
+        statusMsg.style.color = "red";
+        statusMsg.textContent = "Gagal mengirim email reset. Periksa kembali email.";
+      }
+    }
+
+    async function scanEmail() {
+      const listContainer = document.getElementById("email-list");
+      const statusMsg = document.getElementById("status-msg");
+      statusMsg.textContent = "";
+      listContainer.innerHTML = "<p>Memuat daftar email...</p>";
+
+      try {
+        const snapshot = await db.collection("users").get();
+        if (snapshot.empty) {
+          listContainer.innerHTML = "<p>Tidak ada email ditemukan.</p>";
+          return;
+        }
+
+        const items = [];
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          if (data.email) {
+            items.push(`<div class="email-item" onclick="resetViaClick('${data.email}')">${data.email}</div>`);
+          }
+        });
+
+        listContainer.innerHTML = items.join("");
+      } catch (err) {
+        console.error(err);
+        listContainer.innerHTML = "<p style='color:red'>Gagal memuat email.</p>";
+      }
+    }
+
+    async function resetViaClick(email) {
+      const statusMsg = document.getElementById("status-msg");
+      statusMsg.textContent = "";
+
+      try {
+        await auth.sendPasswordResetEmail(email);
+        statusMsg.style.color = "green";
+        statusMsg.textContent = "Email reset terkirim ke: " + email;
+      } catch (err) {
+        console.error(err);
+        statusMsg.style.color = "red";
+        statusMsg.textContent = "Gagal kirim email reset.";
+      }
+    }
+  </script>
+</body>
+</html>
